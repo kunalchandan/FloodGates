@@ -1,27 +1,32 @@
-import matplotlib.pyplot as plt
+# Important imports
 import numpy as np
 
+# Drawing
+import glob
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# CONSTANTS
 COLOURS = 4
 WIDTH = 64
 HEIGHT = 64
-
-new_map = np.random.randint(COLOURS, size=(WIDTH, HEIGHT))
-owned = np.zeros((WIDTH, HEIGHT), dtype=np.bool)
 START = (0, 0)
-owned[START] = True
 
 
-def area(field_state: np.array) -> int:
-    return np.sum(field_state)
+# Get the area of the map that is owned
+def area(owned_state: np.array) -> int:
+    return np.sum(owned_state)
 
-
+# Check if all filled
 def not_filled(own: np.array):
     return not np.all(own)
 
 
+# Get ownership of all other cells adjacent (in up down left right) with the same colour
 def flood(field: np.array, own: np.array, guess_colour: int) -> np.array:
+    cur_area = area(own)
     for i in range(max(WIDTH, HEIGHT)):
-        # , mode='empty'
+        # Checks each direction by padding and checking colour with ownership in each direction
         own[np.pad(own &
                      np.pad(field == guess_colour,
                             ((0, 1), (0, 0)),
@@ -42,30 +47,16 @@ def flood(field: np.array, own: np.array, guess_colour: int) -> np.array:
                             ((0, 0), (1, 0)),
                             mode='constant')[:, :-1],
                    ((0, 0), (0, 1)), mode='constant')[:, 1:]] = True
+        # Prevent excess checking
+        if area(own) == cur_area:
+            break
+        else:
+            cur_area = area(own)
     return own
 
 
-# def yield_brute_force_given_state(num_guesses, guesses_taken, field_states, ownerships):
-#     if not_filled(ownerships[-1]):
-#         states.append(new_map.copy())
-#         # Try colour
-#         # ## Best guess for colour
-#         guess_colour = 1 if guess_colour == new_map[0][0] else 0
-#         print(new_map, guess_colour)
-#         num_guesses += 1
-#
-#         # Fill colour of owned cells
-#         new_map[owned] = guess_colour
-#
-#         # Gather ownership of other cells
-#         owned = flood(new_map, owned)
-#
-#         plt.imshow(new_map, cmap='Dark2', interpolation='nearest')
-#         plt.show(block=False)
-
-
+# Solve via brute force by checking all possible paths.
 def yield_brute_force_given_state(num_guesses: int, prev_guesses: list, field_state: np.array, owned: np.array) -> list:
-    # print("Num Guesses: {}".format(num_guesses))
     if not_filled(owned):
         num_guesses += 1
         costs = []
@@ -92,47 +83,52 @@ def yield_brute_force_given_state(num_guesses: int, prev_guesses: list, field_st
             cost = len(best_branch)
             best_branches.append(best_branch)
             costs.append(cost)
+        # Get the first branch that was the shortest
         min_cost, branch = min(zip(costs, best_branches))
-        # min_cost, i = min((len(branch), i) for (i, branch) in enumerate(best_branches))
-        # best_branch = best_branches[i]
-        # print(branch, min_cost)
         return branch
     else:
         return prev_guesses
 
 
-print(new_map)
-ideal_sol = yield_brute_force_given_state(0, [], new_map.copy(), owned.copy())
-print(ideal_sol)
-for i, move in enumerate(ideal_sol):
-    # Try colour
-    # ## Best guess for colour
-    guess_colour = move
-    # print(new_map, guess_colour)
+def draw_brute_solve(new_map, owned):
+    print(new_map)
+    ideal_sol = yield_brute_force_given_state(0, [], new_map.copy(), owned.copy())
+    print(ideal_sol)
+    for i, move in enumerate(ideal_sol):
+        # Try colour
+        # ## Best guess for colour
+        guess_colour = move
+        # print(new_map, guess_colour)
 
-    # Fill colour of owned cells
-    new_map[owned] = guess_colour
+        # Fill colour of owned cells
+        new_map[owned] = guess_colour
 
-    # Gather ownership of other cells
-    owned = flood(new_map, owned, move)
+        # Gather ownership of other cells
+        owned = flood(new_map, owned, move)
+
+        plt.imshow(new_map, cmap='Paired', interpolation='nearest')
+        plt.savefig('./solve/{}.png'.format(str(i).zfill(3)))
+        # plt.show()
+    
 
     plt.imshow(new_map, cmap='Paired', interpolation='nearest')
-    plt.savefig('./solve/{}.png'.format(str(i).zfill(3)))
+    plt.savefig('./solve/{}.png'.format(str(i+1).zfill(3)))
     # plt.show()
 
 
-plt.imshow(new_map, cmap='Paired', interpolation='nearest')
-plt.savefig('./solve/{}.png'.format(str(i+1).zfill(3)))
-# plt.show()
+# Animate the solution in the solve folder into a gif
+def animate_solve():
+    fp_in = "./solve/*.png"
+    fp_out = "./solve/solve.gif"
 
-import glob
-from PIL import Image
+    # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
+    img, *imgs = [Image.open(f) for f in sorted(glob.glob(fp_in))]
+    img.save(fp=fp_out, format='GIF', append_images=imgs,
+             save_all=True, duration=200, loop=0)
 
-fp_in = "./solve/*.png"
-fp_out = "./solve/solve.gif"
 
-# https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
-img, *imgs = [Image.open(f) for f in sorted(glob.glob(fp_in))]
-img.save(fp=fp_out, format='GIF', append_images=imgs,
-         save_all=True, duration=200, loop=0)
-
+if __name__ == '__main__':
+    new_map = np.random.randint(COLOURS, size=(WIDTH, HEIGHT))
+    owned = np.zeros((WIDTH, HEIGHT), dtype=np.bool)
+    owned[START] = True
+    draw_brute_solve(new_map, owned)
