@@ -2,14 +2,25 @@ import numpy as np
 
 # CONSTANTS
 COLOURS = 4
-WIDTH = 64
-HEIGHT = 64
+WIDTH = 3
+HEIGHT = 3
 START = (0, 0)
 
 
 # Get the area of the map that is owned
 def area(owned_state: np.array) -> int:
     return np.sum(owned_state)
+
+
+# Get Perimeter of owned map
+def perimeter(owned_state: np.array) -> int:
+    # for pad in np.reshape(np.eye(4), (4, 2, 2)):
+    perim = 0
+    perim += area(owned_state & (owned_state ^ np.pad(owned_state, ((1, 0), (0, 0)), mode='constant')[:-1, :]))
+    perim += area(owned_state & (owned_state ^ np.pad(owned_state, ((0, 1), (0, 0)), mode='constant')[1:, :]))
+    perim += area(owned_state & (owned_state ^ np.pad(owned_state, ((0, 0), (1, 0)), mode='constant')[:, :-1]))
+    perim += area(owned_state & (owned_state ^ np.pad(owned_state, ((0, 0), (0, 1)), mode='constant')[:, 1:]))
+    return perim
 
 
 # Check if all filled
