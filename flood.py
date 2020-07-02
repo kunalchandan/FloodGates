@@ -5,38 +5,31 @@ import numpy as np
 import game
 
 # Our solvers
-import solvers as solver
+import solvers
 
 # Drawing
 import glob
 import matplotlib.pyplot as plt
 from PIL import Image
 
+MAP_COLOUR = 'viridis'
 
-def draw_brute_solve(new_map, owned):
-    # print(new_map)
-    ideal_sol = solver.yield_brute_force_given_state(0, [], new_map.copy(), owned.copy())
-    # print(ideal_sol)
+
+def draw_solve(new_map: np.array, owned: np.array, solver):
+    ideal_sol = solver(0, [], new_map.copy(), owned.copy())
+    print(ideal_sol)
+    plt.imshow(new_map, cmap=MAP_COLOUR, interpolation='nearest')
+    plt.savefig('./solve/greedy/{}.png'.format(str(0).zfill(3)))
     for i, move in enumerate(ideal_sol):
         # Try colour
         # ## Best guess for colour
         guess_colour = move
-        # print(new_map, guess_colour)
-
         # Fill colour of owned cells
         new_map[owned] = guess_colour
-
         # Gather ownership of other cells
         owned = game.flood(new_map, owned, move)
-
-        plt.imshow(new_map, cmap='Paired', interpolation='nearest')
-        plt.savefig('./solve/{}.png'.format(str(i).zfill(3)))
-        # plt.show()
-
-
-    plt.imshow(new_map, cmap='Paired', interpolation='nearest')
-    plt.savefig('./solve/{}.png'.format(str(i+1).zfill(3)))
-    # plt.show()
+        plt.imshow(new_map, cmap=MAP_COLOUR, interpolation='nearest')
+        plt.savefig('./solve/greedy/{}.png'.format(str(i+1).zfill(3)))
 
 
 # Animate the solution in the solve folder into a gif
@@ -52,6 +45,13 @@ def animate_solve():
 
 if __name__ == '__main__':
     new_map = np.random.randint(game.COLOURS, size=(game.WIDTH, game.HEIGHT))
+    print("New Map")
+    print(new_map)
     owned = np.zeros((game.WIDTH, game.HEIGHT), dtype=np.bool)
+    # Start and flood to the surrounding neighbours with the same colour
     owned[game.START] = True
-    draw_brute_solve(new_map, owned)
+    owned = game.flood(new_map, owned, new_map[game.START])
+    print("Greedy Solve")
+    draw_solve(new_map.copy(), owned.copy(), solvers.greedy_perimeter_solve)
+    print("Brute Solve")
+    draw_solve(new_map.copy(), owned.copy(), solvers.yield_brute_force_given_state)
