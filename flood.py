@@ -8,18 +8,22 @@ import game
 import solvers
 
 # Drawing
+import os
+import shutil
 import glob
 import matplotlib.pyplot as plt
 from PIL import Image
 
 MAP_COLOUR = 'viridis'
+ZFILL = 3
 
 
-def draw_solve(new_map: np.array, owned: np.array, solver):
+def draw_solve(new_map: np.array, owned: np.array, solver, folder):
     ideal_sol = solver(0, [], new_map.copy(), owned.copy())
+    print(f"Solution by {folder} solver")
     print(ideal_sol)
     plt.imshow(new_map, cmap=MAP_COLOUR, interpolation='nearest')
-    plt.savefig('./solve/greedy/{}.png'.format(str(0).zfill(3)))
+    plt.savefig('./solve/{}/{}.png'.format(folder, str(0).zfill(ZFILL)))
     for i, move in enumerate(ideal_sol):
         # Try colour
         # ## Best guess for colour
@@ -29,7 +33,7 @@ def draw_solve(new_map: np.array, owned: np.array, solver):
         # Gather ownership of other cells
         owned = game.flood(new_map, owned, move)
         plt.imshow(new_map, cmap=MAP_COLOUR, interpolation='nearest')
-        plt.savefig('./solve/greedy/{}.png'.format(str(i+1).zfill(3)))
+        plt.savefig('./solve/{}/{}.png'.format(folder,str(i+1).zfill(ZFILL)))
 
 
 # Animate the solution in the solve folder into a gif
@@ -51,7 +55,11 @@ if __name__ == '__main__':
     # Start and flood to the surrounding neighbours with the same colour
     owned[game.START] = True
     owned = game.flood(new_map, owned, new_map[game.START])
+    [[os.remove(f'./solve/{a}/{b}') for b in os.listdir(f'./solve/{a}/')] for a in ['greedy', 'brute'] if os.path.exists(f'./solve/{a}/')]
+    [os.makedirs(f'./solve/{a}/') for a in ['greedy', 'brute'] if not os.path.exists(f'./solve/{a}/')]
     print("Greedy Solve")
-    draw_solve(new_map.copy(), owned.copy(), solvers.greedy_perimeter_solve)
+    draw_solve(new_map.copy(), owned.copy(), solvers.greedy_perimeter_solve, 'greedy')
     print("Brute Solve")
-    draw_solve(new_map.copy(), owned.copy(), solvers.yield_brute_force_given_state)
+    draw_solve(new_map.copy(), owned.copy(), solvers.yield_brute_force_given_state, 'brute')
+    for i in range(1000):
+        
